@@ -26,7 +26,7 @@ async def on_ready():
     print(f'Logged in as {bot.user.name}')
 
 @bot.slash_command(name='touroku', description='CSNを登録・照会')
-async def register_csn(ctx, csn: discord.Option(str, "CSNを入力"), amount: (int, "包帯の個数")):
+async def register_csn(ctx, csn: discord.Option(str, "CSNを入力"), amount: discord.Option(int, "包帯の個数")):
     # Check if the CSN already exists in the database
     existing_data = collection.find_one({'csn': csn})
     
