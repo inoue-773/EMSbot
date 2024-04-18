@@ -18,15 +18,15 @@ db = client['discord_bot']
 collection = db['csn_data']
 
 # Create a bot instance
-intents = discord.Intents.default()
+intents = discord.Intents.all()
 bot = commands.Bot(command_prefix='/', intents=intents)
 
 @bot.event
 async def on_ready():
     print(f'Logged in as {bot.user.name}')
 
-@bot.slash_command(name='touroku', description='Register a CSN')
-async def register_csn(ctx, csn: str, amount: int):
+@bot.slash_command(name='touroku', description='CSNを登録・照会')
+async def register_csn(ctx, csn: discord.Option(str, "CSNを入力"), amount: (int, "包帯の個数")):
     # Check if the CSN already exists in the database
     existing_data = collection.find_one({'csn': csn})
     
@@ -55,20 +55,25 @@ async def register_csn(ctx, csn: str, amount: int):
         hours_passed = time_diff.total_seconds() // 3600
         
         # Create an embed with green color
-        embed = discord.Embed(title=f"CSN {csn} Information", color=discord.Color.green())
-        embed.add_field(name="Time since last registration", value=f"{hours_passed:.2f} hours", inline=False)
-        embed.add_field(name="Registration Date", value=registration_date.strftime('%Y-%m-%d'), inline=False)
-        embed.add_field(name="Amount", value=updated_data['amount'], inline=False)
+        embed = discord.Embed(title=f"CSN {csn} Information",description="この市民には包帯を渡せます", color=discord.Color.green())
+        embed.set_thumbnail(url="https://i.imgur.com/u6oDUNv.png")
+        embed.add_field(name="最後にCSNが登録されたのは", value=f"{hours_passed:.2f} 時間前", inline=False)
+        embed.add_field(name="登録された日付", value=registration_date.strftime('%Y-%m-%d'), inline=False)
+        embed.add_field(name="包帯の個数", value=updated_data['amount'], inline=False)
+        embed.set_footer(text="Powered By NickyBoy", icon_url="https://i.imgur.com/QfmDKS6.png")
+
         
         await ctx.respond(embed=embed)
     else:
         hours_passed = time_diff.total_seconds() // 3600
         
         # Create an embed with red color
-        embed = discord.Embed(title=f"CSN {csn} Information", color=discord.Color.red())
-        embed.add_field(name="Time since last registration", value=f"{hours_passed:.2f} hours", inline=False)
-        embed.add_field(name="Registration Date", value=registration_date.strftime('%Y-%m-%d'), inline=False)
-        embed.add_field(name="Amount", value=updated_data['amount'], inline=False)
+        embed = discord.Embed(title=f"CSN {csn} Information",description="この市民には包帯を渡せません", color=discord.Color.red())
+        embed.set_thumbnail(url="https://i.imgur.com/qLnl40c.png")
+        embed.add_field(name="最後にCSNが登録されたのは", value=f"{hours_passed:.2f} hours", inline=False)
+        embed.add_field(name="登録された日付", value=registration_date.strftime('%Y-%m-%d'), inline=False)
+        embed.add_field(name="包帯の個数", value=updated_data['amount'], inline=False)
+        embed.set_footer(text="Powered By NickyBoy", icon_url="https://i.imgur.com/QfmDKS6.png")
         
         await ctx.respond(embed=embed)
 
