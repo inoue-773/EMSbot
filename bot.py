@@ -2,7 +2,7 @@ import os
 import discord
 from discord.ext import commands
 from pymongo import MongoClient
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from zoneinfo import ZoneInfo  # Import ZoneInfo from zoneinfo module
 from dotenv import load_dotenv
 
@@ -35,7 +35,7 @@ async def register_csn(ctx, csn: discord.Option(str, "CSNを入力"), amount: di
         # Convert registration_date from ISO 8601 string to datetime object
         registration_date_str = existing_data['registration_date'].rstrip('Z')  # Remove the 'Z'
         registration_date = datetime.fromisoformat(registration_date_str)
-        registration_date = registration_date.replace(tzinfo=ZoneInfo("UTC"))  # Assign UTC timezone
+        registration_date = registration_date.replace(tzinfo=timezone.utc)  # Assign UTC timezone
         
         # Convert UTC to JST
         jst_date = registration_date.astimezone(ZoneInfo("Asia/Tokyo"))
@@ -64,20 +64,26 @@ async def register_csn(ctx, csn: discord.Option(str, "CSNを入力"), amount: di
         # Update the existing document with the new amount and registration date only after responding
         collection.update_one({'csn': csn}, {'$set': {'amount': amount, 'registration_date': datetime.now(ZoneInfo("Asia/Tokyo")).isoformat()}})
     else:
-        # Create a new document for the CSN
+        # Get the current time in JST
+        jst_now = datetime.now(ZoneInfo("Asia/Tokyo"))
+        
+        # Format the JST datetime in the desired format
+        formatted_jst_now = jst_now.strftime('%Y-%m-%d %H:%M')
+        
+        # Create a new document with the formatted JST time
         data = {
             'csn': csn,
-            'registration_date': datetime.now(ZoneInfo("Asia/Tokyo")).isoformat(),
+            'registration_date': formatted_jst_now,
             'amount': amount
         }
         collection.insert_one(data)
+        
+        # Create an embed to confirm the registration
         embed = discord.Embed(title=f"🔍 {csn} の情報", description="新しいデータを登録しました", color=discord.Color.blue())
-        embed.add_field(name="📅登録された日付と時間", value=data['registration_date'], inline=False)
+        embed.add_field(name="📅登録された日付と時間", value=formatted_jst_now, inline=False)
         embed.add_field(name="🩹包帯の個数", value=amount, inline=False)
         embed.set_footer(text="Powered By NickyBoy", icon_url="https://i.imgur.com/QfmDKS6.png")
         await ctx.respond(embed=embed)
 
 # Run the bot
 bot.run(DISCORD_BOT_TOKEN)
-
-
