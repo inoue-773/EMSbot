@@ -2,7 +2,8 @@ import os
 import discord
 from discord.ext import commands
 from pymongo import MongoClient
-from datetime import datetime, timedelta, timezone
+from datetime import datetime, timedelta
+from zoneinfo import ZoneInfo  # Import ZoneInfo from zoneinfo module
 from dotenv import load_dotenv
 
 # Load environment variables from .env file
@@ -34,10 +35,13 @@ async def register_csn(ctx, csn: discord.Option(str, "CSNを入力"), amount: di
         # Convert registration_date from ISO 8601 string to datetime object
         registration_date_str = existing_data['registration_date'].rstrip('Z')  # Remove the 'Z'
         registration_date = datetime.fromisoformat(registration_date_str)
-        registration_date = registration_date.replace(tzinfo=timezone.utc)  # Assign UTC timezone
+        registration_date = registration_date.replace(tzinfo=ZoneInfo("UTC"))  # Assign UTC timezone
         
-        current_date = datetime.now(timezone.utc)
-        time_diff = current_date - registration_date
+        # Convert UTC to JST
+        jst_date = registration_date.astimezone(ZoneInfo("Asia/Tokyo"))
+        
+        current_date = datetime.now(ZoneInfo("Asia/Tokyo"))
+        time_diff = current_date - jst_date
         hours_passed = time_diff.total_seconds() // 3600
 
         # Determine the embed color based on the time difference
@@ -52,18 +56,18 @@ async def register_csn(ctx, csn: discord.Option(str, "CSNを入力"), amount: di
         embed = discord.Embed(title=f"🔍 {csn} の情報", description=description, color=color)
         embed.set_thumbnail(url="https://i.imgur.com/u6oDUNv.png" if color == discord.Color.red() else "https://i.imgur.com/qLnl40c.png")
         embed.add_field(name="📅最後に登録された時間", value=f"{hours_passed:.2f} 時間前", inline=False)
-        embed.add_field(name="⏲️登録された日付と時間", value=registration_date.strftime('%Y-%m-%d %H:%M'), inline=False)
+        embed.add_field(name="⏲️登録された日付と時間", value=jst_date.strftime('%Y-%m-%d %H:%M'), inline=False)
         embed.add_field(name="🩹包帯の個数", value=existing_data['amount'], inline=False)
         embed.set_footer(text="Powered By NickyBoy", icon_url="https://i.imgur.com/QfmDKS6.png")
         await ctx.respond(embed=embed)
 
         # Update the existing document with the new amount and registration date only after responding
-        collection.update_one({'csn': csn}, {'$set': {'amount': amount, 'registration_date': datetime.utcnow().isoformat()}})
+        collection.update_one({'csn': csn}, {'$set': {'amount': amount, 'registration_date': datetime.now(ZoneInfo("Asia/Tokyo")).isoformat()}})
     else:
         # Create a new document for the CSN
         data = {
             'csn': csn,
-            'registration_date': datetime.utcnow().isoformat(),
+            'registration_date': datetime.now(ZoneInfo("Asia/Tokyo")).isoformat(),
             'amount': amount
         }
         collection.insert_one(data)
@@ -75,3 +79,5 @@ async def register_csn(ctx, csn: discord.Option(str, "CSNを入力"), amount: di
 
 # Run the bot
 bot.run(DISCORD_BOT_TOKEN)
+
+
